@@ -19,8 +19,10 @@ class RevealMNISTEnv(gym.Env):
         self.classifier.load_state_dict(torch.load(classifier_model_weights_loc, map_location=device))
         self.classifier.to(device)
         self.classifier.eval()
-        self.move_cost = -0.01
-
+        self.move_cost = -1
+        self.predict_cost = -2
+        self.max_episode_steps = 200
+        self.step_count = 0
         # Load MNIST
         self.mnist = datasets.MNIST(
             root="./data",
@@ -30,7 +32,7 @@ class RevealMNISTEnv(gym.Env):
         )
 
         self.image_size = 28
-        self.patch_size = 7
+        self.patch_size = 4
         self.grid_size = self.image_size // self.patch_size  # 4x4 patches
         self.num_patches = self.grid_size ** 2  # 16 patches
 
@@ -43,7 +45,7 @@ class RevealMNISTEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-
+        self.step_count = 0
         self.image_idx = random.randint(0, len(self.mnist) - 1)
         self.full_image, self.label = self.mnist[self.image_idx]
         self.full_image = self.full_image.squeeze(0)  # shape: 28x28
@@ -80,7 +82,7 @@ class RevealMNISTEnv(gym.Env):
     def step(self, action):
         terminated = False
         reward = 0
-
+        self.step_count += 1
         if action == 4:  # predict
             revealed_image = self.full_image.clone()
             revealed_image[~self.revealed_mask] = 0
@@ -91,14 +93,15 @@ class RevealMNISTEnv(gym.Env):
 
             if pred == self.label:
                 revealed_ratio = len(self.revealed_patches) / self.num_patches
-                reward = 10 * (1 - revealed_ratio)
+                reward = 100 * (1 - revealed_ratio)
                 terminated = True
                 self.consecutive_failed_predicts = 0
             else:
-                reward = -1.0
+                reward = self.predict_cost
                 self.consecutive_failed_predicts += 1
                 if self.consecutive_failed_predicts >= self.max_failed_predicts:
                     terminated = True
+                    reward = -100
 
         else:
             # Movement penalty always applied for non-predict actions
@@ -119,7 +122,12 @@ class RevealMNISTEnv(gym.Env):
         if len(self.revealed_patches) == self.num_patches:
             terminated = True
 
+        if self.step_count >= self.max_episode_steps and not terminated:
+            reward = -100
+            terminated = True
+
         obs = self._get_obs()
+
         return obs, reward, terminated, False, {}
 
     def render(self):

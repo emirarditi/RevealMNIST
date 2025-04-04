@@ -29,6 +29,7 @@ pip install -e .
 ## Predictor Model
 The predictor model is a simple CNN model that takes the MNIST image as input and outputs the predicted digit. The model is trained on the MNIST dataset and can be used to predict the digit in the image.
 It is already implemented and the weights are provided to you. For your project, you SHOULD NOT update any part of the predictor model.
+The weights of the model is located in the **mnist_predictor_masked.pt** file.
 
 ## Usage
 
@@ -42,6 +43,11 @@ import reveal_mnist
 env = gym.make('RevealMNIST-v0', 
                classifier_model_weights_loc="LOCATION_OF_PROVIDED_WEIGHTS",
                device='DEVICE_TO_USE') # the device should be "cpu", "gpu" or "mps" based on your config
+```
+
+## Running the Random Agent
+```bash
+python3 tests/random_agent.py
 ```
 
 ## License
