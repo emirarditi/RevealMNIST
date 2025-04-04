@@ -1,0 +1,132 @@
+import gymnasium as gym
+from gymnasium import spaces
+import torch
+from torchvision import datasets, transforms
+import numpy as np
+import random
+from .MNISTPredictor import MNISTPredictor
+
+
+class RevealMNISTEnv(gym.Env):
+    def __init__(self, classifier_model_weights_loc, device="cpu"):
+        super().__init__()
+
+        self.device = device
+        classifier = MNISTPredictor()
+        self.classifier = MNISTPredictor()
+        if classifier_model_weights_loc is None:
+            raise ValueError("Classifier model weights location must be provided.")
+        self.classifier.load_state_dict(torch.load(classifier_model_weights_loc, map_location=device))
+        self.classifier.to(device)
+        self.classifier.eval()
+        self.move_cost = -0.01
+
+        # Load MNIST
+        self.mnist = datasets.MNIST(
+            root="./data",
+            train=True,
+            download=True,
+            transform=transforms.ToTensor()
+        )
+
+        self.image_size = 28
+        self.patch_size = 7
+        self.grid_size = self.image_size // self.patch_size  # 4x4 patches
+        self.num_patches = self.grid_size ** 2  # 16 patches
+
+        # Observation: 784 (image) + 2 (position) + 1 (failed predicts) + 1 (revealed patch ratio)
+        self.observation_space = spaces.Box(low=0, high=1, shape=(788,), dtype=np.float32)
+        self.action_space = spaces.Discrete(5)  # left, right, up, down, predict
+
+        self.max_failed_predicts = 3
+        self.reset()
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+
+        self.image_idx = random.randint(0, len(self.mnist) - 1)
+        self.full_image, self.label = self.mnist[self.image_idx]
+        self.full_image = self.full_image.squeeze(0)  # shape: 28x28
+
+        self.revealed_mask = torch.zeros_like(self.full_image, dtype=torch.bool)
+        self.revealed_patches = set()
+
+        self.agent_x = random.randint(0, self.grid_size - 1)
+        self.agent_y = random.randint(0, self.grid_size - 1)
+        self.consecutive_failed_predicts = 0
+
+        self._reveal_current_patch()
+
+        return self._get_obs(), {}
+
+    def _reveal_current_patch(self):
+        x_start = self.agent_x * self.patch_size
+        y_start = self.agent_y * self.patch_size
+
+        self.revealed_mask[y_start:y_start + self.patch_size, x_start:x_start + self.patch_size] = True
+        self.revealed_patches.add((self.agent_x, self.agent_y))
+
+    def _get_obs(self):
+        revealed_image = self.full_image.clone()
+        revealed_image[~self.revealed_mask] = 0
+        flat_image = revealed_image.flatten()
+
+        position = torch.tensor([self.agent_x, self.agent_y], dtype=torch.float32)
+        predicts = torch.tensor([self.consecutive_failed_predicts], dtype=torch.float32)
+        revealed_ratio = torch.tensor([len(self.revealed_patches) / self.num_patches], dtype=torch.float32)
+
+        return torch.cat([flat_image, position, predicts, revealed_ratio]).numpy()
+
+    def step(self, action):
+        terminated = False
+        reward = 0
+
+        if action == 4:  # predict
+            revealed_image = self.full_image.clone()
+            revealed_image[~self.revealed_mask] = 0
+            input_tensor = revealed_image.unsqueeze(0).unsqueeze(0).to(self.device)  # shape: 1x1x28x28
+
+            with torch.no_grad():
+                pred = self.classifier(input_tensor).argmax(dim=1).item()
+
+            if pred == self.label:
+                revealed_ratio = len(self.revealed_patches) / self.num_patches
+                reward = 10 * (1 - revealed_ratio)
+                terminated = True
+                self.consecutive_failed_predicts = 0
+            else:
+                reward = -1.0
+                self.consecutive_failed_predicts += 1
+                if self.consecutive_failed_predicts >= self.max_failed_predicts:
+                    terminated = True
+
+        else:
+            # Movement penalty always applied for non-predict actions
+            reward += self.move_cost
+            self.consecutive_failed_predicts = 0
+
+            if action == 0:  # left
+                self.agent_x = max(self.agent_x - 1, 0)
+            elif action == 1:  # right
+                self.agent_x = min(self.agent_x + 1, self.grid_size - 1)
+            elif action == 2:  # up
+                self.agent_y = max(self.agent_y - 1, 0)
+            elif action == 3:  # down
+                self.agent_y = min(self.agent_y + 1, self.grid_size - 1)
+
+        self._reveal_current_patch()
+
+        if len(self.revealed_patches) == self.num_patches:
+            terminated = True
+
+        obs = self._get_obs()
+        return obs, reward, terminated, False, {}
+
+    def render(self):
+        import matplotlib.pyplot as plt
+        revealed_image = self.full_image.clone()
+        revealed_image[~self.revealed_mask] = 0
+        plt.imshow(revealed_image.numpy(), cmap='gray')
+        plt.title(f'Agent: ({self.agent_x}, {self.agent_y})')
+        plt.axis('off')
+        plt.show()

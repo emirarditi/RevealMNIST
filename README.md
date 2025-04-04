@@ -1,0 +1,45 @@
+# Reveal MNIST
+
+A gym environment for the CS 445&545 Project. This environment gradually reveals parts of an MNIST image based on agents actions'. Images are broken down to sub patches of size 7x7, so the agent moves in a 4x4 grid.
+
+## Action Space
+The action space is as follows:
+- Left
+- Right
+- Up
+- Down
+- Predict 
+
+## State Space
+The state space has a size of 788:
+- first 784: the input image
+- Agent X
+- Agent Y
+- Number of consequent predictions
+- Image reveal percentage 
+
+## Installation
+
+To install the package, run:
+
+```bash
+pip install -e .
+```
+
+## Usage
+
+Import the package and create a gym environment:
+
+```python
+import gymnasium as gym
+import reveal_mnist
+
+# Create the environment
+env = gym.make('RevealMNIST-v0', 
+               classifier_model_weights_loc="LOCATION_OF_PROVIDED_WEIGHTS",
+               device='DEVICE_TO_USE') # the device should be "cpu", "gpu" or "mps" based on your config
+```
+
+## License
+
+[MIT License](LICENSE)
