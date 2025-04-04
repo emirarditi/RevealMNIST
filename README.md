@@ -26,6 +26,10 @@ To install the package, run:
 pip install -e .
 ```
 
+## Predictor Model
+The predictor model is a simple CNN model that takes the MNIST image as input and outputs the predicted digit. The model is trained on the MNIST dataset and can be used to predict the digit in the image.
+It is already implemented and the weights are provided to you. For your project, you SHOULD NOT update any part of the predictor model.
+
 ## Usage
 
 Import the package and create a gym environment:
