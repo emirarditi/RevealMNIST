@@ -5,10 +5,10 @@ from torchvision import datasets, transforms
 import numpy as np
 import random
 from .MNISTPredictor import MNISTPredictor
-
+import matplotlib.pyplot as plt
 
 class RevealMNISTEnv(gym.Env):
-    def __init__(self, classifier_model_weights_loc, device="cpu"):
+    def __init__(self, classifier_model_weights_loc, device="cpu", visualize=False):
         super().__init__()
 
         self.device = device
@@ -23,6 +23,7 @@ class RevealMNISTEnv(gym.Env):
         self.predict_cost = -2
         self.max_episode_steps = 200
         self.step_count = 0
+        self.visualize = visualize
         # Load MNIST
         self.mnist = datasets.MNIST(
             root="./data",
@@ -42,6 +43,10 @@ class RevealMNISTEnv(gym.Env):
 
         self.max_failed_predicts = 3
         self.reset()
+
+        if visualize:
+            self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(10, 5))
+            self.fig.show()  # Show the figure once
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -131,10 +136,24 @@ class RevealMNISTEnv(gym.Env):
         return obs, reward, terminated, False, {}
 
     def render(self):
-        import matplotlib.pyplot as plt
+        if not self.visualize:
+            raise EnvironmentError("Visualization is not enabled. Set visualize=True to enable rendering.")
+        # Clear previous images without causing flicker
+        self.ax1.clear()
+        self.ax2.clear()
+
+        # Full image (unmodified)
+        self.ax1.imshow(self.full_image.numpy(), cmap='gray')
+        self.ax1.set_title("Full Image")
+        self.ax1.axis('off')
+
+        # Partially revealed image (only the revealed parts)
         revealed_image = self.full_image.clone()
-        revealed_image[~self.revealed_mask] = 0
-        plt.imshow(revealed_image.numpy(), cmap='gray')
-        plt.title(f'Agent: ({self.agent_x}, {self.agent_y})')
-        plt.axis('off')
-        plt.show()
+        revealed_image[~self.revealed_mask] = 0  # Set un-revealed parts to 0
+        self.ax2.imshow(revealed_image.numpy(), cmap='gray')
+        self.ax2.set_title(f"Revealed Image\nAgent: ({self.agent_x}, {self.agent_y})")
+        self.ax2.axis('off')
+
+        # Draw the updated figure smoothly without flicker
+        self.fig.canvas.draw_idle()  # This efficiently redraws the canvas without flicker
+        plt.pause(0.001)

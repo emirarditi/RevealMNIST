@@ -1,6 +1,6 @@
 # Reveal MNIST
 
-A gym environment for the CS 445&545 Project. This environment gradually reveals parts of an MNIST image based on agents actions'. Images are broken down to sub patches of size 7x7, so the agent moves in a 4x4 grid.
+A gym environment for the CS 445&545 Project. This environment gradually reveals parts of an MNIST image based on agents actions'. Images are broken down to sub patches of size 4x4, so the agent moves in a 7x7 grid.
 
 ## Action Space
 The action space is as follows:
@@ -42,7 +42,7 @@ import reveal_mnist
 # Create the environment
 env = gym.make('RevealMNIST-v0', 
                classifier_model_weights_loc="LOCATION_OF_PROVIDED_WEIGHTS",
-               device='DEVICE_TO_USE') # the device should be "cpu", "gpu" or "mps" based on your config
+               device='DEVICE_TO_USE', visualize=True) # the device should be "cpu", "gpu" or "mps" based on your config
 ```
 
 ## Running the Random Agent

@@ -1,7 +1,7 @@
 import gymnasium as gym
 import reveal_mnist
 
-env = gym.make('RevealMNIST-v0', classifier_model_weights_loc="mnist_predictor_masked.pt", device='mps')
+env = gym.make('RevealMNIST-v0', classifier_model_weights_loc="mnist_predictor_masked.pt", device='mps', visualize=True)
 
 NUM_EPISODES = 1000
 
@@ -19,5 +19,5 @@ for i in range(NUM_EPISODES):
         done = terminated or truncated
         if done:
             final_reward = reward
-        #env.render() # Uncomment to visualize the environment
+        env.render() # Uncomment to visualize the environment
     print(f"Episode {i + 1}: Length: {length}, Cumulative Reward: {cumulative_reward}")
