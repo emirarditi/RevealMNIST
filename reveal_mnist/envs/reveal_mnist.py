@@ -8,7 +8,7 @@ from .MNISTPredictor import MNISTPredictor
 import matplotlib.pyplot as plt
 
 class RevealMNISTEnv(gym.Env):
-    def __init__(self, classifier_model_weights_loc, device="cpu", visualize=False):
+    def __init__(self, classifier_model_weights_loc, device="cpu", visualize=False, stochastic=False):
         super().__init__()
 
         self.device = device
@@ -24,6 +24,7 @@ class RevealMNISTEnv(gym.Env):
         self.max_episode_steps = 200
         self.step_count = 0
         self.visualize = visualize
+        self.stochastic = stochastic
         # Load MNIST
         self.mnist = datasets.MNIST(
             root="./data",
@@ -85,6 +86,9 @@ class RevealMNISTEnv(gym.Env):
         return torch.cat([flat_image, position, predicts, revealed_ratio]).numpy()
 
     def step(self, action):
+        if self.stochastic:
+            if random.random() < 0.2:
+                action = random.randint(0, 4)
         terminated = False
         reward = 0
         self.step_count += 1
