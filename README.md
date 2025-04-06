@@ -50,6 +50,14 @@ env = gym.make('RevealMNIST-v0',
 python3 tests/random_agent.py
 ```
 
+## (FOR CS 545 STUDENTS ONLY) Using the Stochastic Environment
+In order to run the environment stochastically, you need to set the `stochastic` parameter to `True` when creating the environment. In the stochastic case, 20% of the time, the actions are randomly selected, regardless of the action you have chosen.
+```python
+env = gym.make('RevealMNIST-v0', 
+               classifier_model_weights_loc="LOCATION_OF_PROVIDED_WEIGHTS",
+               device='DEVICE_TO_USE', visualize=True, stochastic=True) # the device should be "cpu", "gpu" or "mps" based on your config
+```
+
 ## License
 
 [MIT License](LICENSE)
