@@ -10,5 +10,6 @@ setup(
         'torchvision',
         'numpy',
         'matplotlib',
+        'pyqt5'
     ]
 )
